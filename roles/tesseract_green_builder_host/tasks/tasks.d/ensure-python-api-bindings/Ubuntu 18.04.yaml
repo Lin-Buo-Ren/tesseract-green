@@ -1,0 +1,18 @@
+---
+- name: Install Docker Python API bindings(Ubuntu 18.04)
+  rescue:
+    - name: Terminate playbook execution if any of the tasks in the block fails
+      fail:
+        msg: Unable to install Docker Python API bindings
+  block:
+    - name: Install Docker Python API bindings(Ubuntu 18.04): Python 3.x
+      when: python_major_version == 3
+      become: True
+      apt:
+        name: python3-docker
+
+    - name: Install Docker Python API bindings(Ubuntu 18.04): Python 2.x
+      when: python_major_version == 2
+      become: True
+      apt:
+        name: python-docker

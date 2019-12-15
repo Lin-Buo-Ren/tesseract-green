@@ -1,0 +1,41 @@
+---
+# tasks file for tesseract_green_builder_host
+- name: Determine whether a Docker installation is available
+  rescue:
+    - name: Determine whether a Docker installation is available: Set detection result as fact
+      set_fact:
+        docker_available: False
+
+  block:
+    - name: Determine whether a Docker installation is available: Attempt to run hello-world docker image
+      docker_container:
+        name: tesseract-green-docker-existence-test
+        image: hello-world
+        detach: no
+        auto_remove: yes
+
+    - name: Determine whether a Docker installation is available: Set detection result as fact
+      set_fact:
+        docker_available: True
+
+- name: Attempt to install Docker if Docker is not available
+  when: docker_available is sameas False
+  rescue:
+    - name: Attempt to install Docker if Docker is not available: Let user know what happened and how to do about it
+      fail:
+        msg: Error: Unable to install the Docker runtime, please install it via https://docs.docker.com/install manually and retry.
+
+  - name: Attempt to install Docker if Docker is not available: Include geerlingguy.docker role for installing Docker
+    import_role: geerlingguy.docker
+
+- name: Ensure Docker Python API bindings are installed
+  rescue:
+    - name: Terminate playbook if any member task failed
+      fail:
+        msg: Unable to ensure Docker Python API bindings are installed
+  block:
+    - name: Ensure Docker Python API bindings are installed: Determine the Python major version Ansible is running
+      set_fact:
+        python_major_version: '{{ ansible_python_version.split(".")[0] }}'
+    - name: Ensure Docker Python API bindings are installed: Ensure Docker Python API bindings are installed
+      import_tasks: tasks.d/ensure-python-api-bindings/{{ ansible_distribution }} {{ ansible_distribution_version }}.yaml
