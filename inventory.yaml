@@ -1,0 +1,12 @@
+# Inventory file for Ansible
+# References:
+#   - How to build your inventory — Ansible Documentation
+#     https://docs.ansible.com/ansible/latest/user_guide/intro_inventory.html
+all:
+  hosts:
+    builder_host:
+      ansible_connection: local
+
+    builder:
+      ansible_docker_host: tesseract-green-builder
+      ansible_connection: docker
