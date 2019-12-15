@@ -17,6 +17,10 @@ trim_trailing_whitespace = false
 [/.git/**]
 trim_trailing_whitespace = false
 
+# Respect default .gitmodules format settings
+[/.gitmodules]
+indent_style = tab
+
 [*.{yml,yaml}]
 indent_size = 2
 
