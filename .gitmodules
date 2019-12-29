@@ -1,3 +1,6 @@
 [submodule "ansible-role-docker"]
 	path = roles/geerlingguy.docker
 	url = https://github.com/geerlingguy/ansible-role-docker.git
+[submodule "playbooks/roles/robertdebock.bootstrap"]
+	path = playbooks/roles/robertdebock.bootstrap
+	url = https://github.com/robertdebock/ansible-role-bootstrap.git
