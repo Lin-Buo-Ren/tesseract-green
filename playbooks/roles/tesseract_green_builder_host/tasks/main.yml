@@ -28,7 +28,7 @@
       fail:
         msg: 'Error: Unable to install the Docker runtime, please install it via https://docs.docker.com/install manually and retry.'
 
-  - name: Attempt to install Docker if Docker is not available: Include geerlingguy.docker role for installing Docker
-    import_role: geerlingguy.docker
-
   block:
+    - name: 'Attempt to install Docker if Docker is not available: Include geerlingguy.docker role for installing Docker'
+      include_role:
+        name: geerlingguy.docker
