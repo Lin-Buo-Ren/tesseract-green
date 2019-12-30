@@ -5,28 +5,28 @@
 
 - name: Determine whether a Docker installation is available
   rescue:
-    - name: Determine whether a Docker installation is available: Set detection result as fact
+    - name: 'Determine whether a Docker installation is available: Set detection result as fact'
       set_fact:
         docker_available: False
 
   block:
-    - name: Determine whether a Docker installation is available: Attempt to run hello-world docker image
+    - name: 'Determine whether a Docker installation is available: Attempt to run hello-world docker image'
       docker_container:
         name: tesseract-green-docker-existence-test
         image: hello-world
         detach: no
         auto_remove: yes
 
-    - name: Determine whether a Docker installation is available: Set detection result as fact
+    - name: 'Determine whether a Docker installation is available: Set detection result as fact'
       set_fact:
         docker_available: True
 
 - name: Attempt to install Docker if Docker is not available
   when: docker_available is sameas False
   rescue:
-    - name: Attempt to install Docker if Docker is not available: Let user know what happened and how to do about it
+    - name: 'Attempt to install Docker if Docker is not available: Let user know what happened and how to do about it'
       fail:
-        msg: Error: Unable to install the Docker runtime, please install it via https://docs.docker.com/install manually and retry.
+        msg: 'Error: Unable to install the Docker runtime, please install it via https://docs.docker.com/install manually and retry.'
 
   - name: Attempt to install Docker if Docker is not available: Include geerlingguy.docker role for installing Docker
     import_role: geerlingguy.docker
