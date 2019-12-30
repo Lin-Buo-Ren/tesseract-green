@@ -31,14 +31,4 @@
   - name: Attempt to install Docker if Docker is not available: Include geerlingguy.docker role for installing Docker
     import_role: geerlingguy.docker
 
-- name: Ensure Docker Python API bindings are installed
-  rescue:
-    - name: Terminate playbook if any member task failed
-      fail:
-        msg: Unable to ensure Docker Python API bindings are installed
   block:
-    - name: Ensure Docker Python API bindings are installed: Determine the Python major version Ansible is running
-      set_fact:
-        python_major_version: '{{ ansible_python_version.split(".")[0] }}'
-    - name: Ensure Docker Python API bindings are installed: Ensure Docker Python API bindings are installed
-      import_tasks: tasks.d/ensure-python-api-bindings/{{ ansible_distribution }} {{ ansible_distribution_version }}.yaml

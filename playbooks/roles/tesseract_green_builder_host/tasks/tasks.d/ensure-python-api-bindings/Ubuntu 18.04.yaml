@@ -3,16 +3,20 @@
   rescue:
     - name: Terminate playbook execution if any of the tasks in the block fails
       fail:
-        msg: Unable to install Docker Python API bindings
+        msg: 'Error: Unable to install Docker Python API bindings'
   block:
-    - name: Install Docker Python API bindings(Ubuntu 18.04): Python 3.x
-      when: python_major_version == 3
+    - name: 'Install Docker Python API bindings(Ubuntu 18.04 like): Determine the Python major version Ansible is running'
+      set_fact:
+        python_major_version: '{{ ansible_python_version.split(".")[0] }}'
+
+    - name: 'Install Docker Python API bindings(Ubuntu 18.04 like): Python 3.x'
+      when: python_major_version == '3'
       become: True
       apt:
         name: python3-docker
 
-    - name: Install Docker Python API bindings(Ubuntu 18.04): Python 2.x
-      when: python_major_version == 2
+    - name: 'Install Docker Python API bindings(Ubuntu 18.04 like): Python 2.x'
+      when: python_major_version == '2'
       become: True
       apt:
         name: python-docker
