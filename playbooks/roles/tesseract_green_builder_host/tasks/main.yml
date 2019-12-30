@@ -1,5 +1,8 @@
 ---
 # tasks file for tesseract_green_builder_host
+- name: Ensure Docker Python API bindings are installed
+  include_tasks: tasks.d/ensure-python-api-bindings/{{ ansible_distribution }} {{ ansible_distribution_version }}.yaml
+
 - name: Determine whether a Docker installation is available
   rescue:
     - name: Determine whether a Docker installation is available: Set detection result as fact
