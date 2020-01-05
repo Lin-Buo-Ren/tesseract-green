@@ -1,8 +1,5 @@
 ---
 # tasks file for tesseract_green_builder_host
-- name: Ensure Docker Python API bindings are installed
-  include_tasks: tasks.d/ensure-python-api-bindings/{{ ansible_distribution }} {{ ansible_distribution_version }}.yaml
-
 - name: Determine whether a Docker installation is available
   rescue:
     - name: 'Determine whether a Docker installation is available: Set detection result as fact'
@@ -10,12 +7,11 @@
         docker_available: False
 
   block:
-    - name: 'Determine whether a Docker installation is available: Attempt to run hello-world docker image'
-      docker_container:
-        name: tesseract-green-docker-existence-test
-        image: hello-world
-        detach: no
-        auto_remove: yes
+    - name: 'Determine whether a Docker installation is available: Ensure docker service is started'
+      become: True
+      service:
+        name: docker
+        state: started
 
     - name: 'Determine whether a Docker installation is available: Set detection result as fact'
       set_fact:
@@ -32,3 +28,27 @@
     - name: 'Attempt to install Docker if Docker is not available: Include geerlingguy.docker role for installing Docker'
       include_role:
         name: geerlingguy.docker
+
+- name: Determine whether a supported Docker Python API bindings implementation is available
+  rescue:
+    - name: 'Determine whether a supported Docker Python API bindings implementation is available: Terminate playbook execution as runtime dependency not satisfied.'
+      when: dont_install_docker_python_api is sameas True
+      fail:
+        msg: 'Error: Docker Python API bindings not detected or are too old.'
+
+    - name: 'Determine whether a supported Docker Python API bindings implementation is available: Set docker_python_api_not_availble Fact'
+      set_fact:
+        docker_python_api_not_availble: True
+  block:
+    - name: 'Determine whether a Docker installation is available: Attempt to run hello-world docker image'
+      docker_container:
+        name: tesseract-green-docker-existence-test
+        image: hello-world
+        detach: no
+        auto_remove: yes
+
+- name: Ensure Docker Python API bindings are installed
+  when:
+    - docker_python_api_not_availble is defined
+    - docker_python_api_not_availble is sameas True
+  include_tasks: tasks.d/ensure-python-api-bindings/{{ ansible_distribution }} {{ ansible_distribution_version }}.yaml

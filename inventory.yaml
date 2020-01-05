@@ -6,6 +6,8 @@ all:
   hosts:
     builder_host:
       ansible_connection: local
+      # Specify proper interpreter for pipx ansible installation
+      #ansible_python_interpreter: "{{ lookup('pipe', 'printenv HOME') }}/.local/pipx/venvs/ansible/bin/python"
 
     builder:
       ansible_docker_host: tesseract-green-builder

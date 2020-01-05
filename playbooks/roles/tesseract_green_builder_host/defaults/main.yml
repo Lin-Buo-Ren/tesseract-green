@@ -1,0 +1,3 @@
+---
+# defaults file for tesseract_green_builder_host
+dont_install_docker_python_api: no
