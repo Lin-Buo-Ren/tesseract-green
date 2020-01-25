@@ -84,6 +84,7 @@ main(){
     exit 0
 }
 
+# 將原生程式所依賴的程式庫檔案複製到新的程式庫目錄
 determine_and_copy_library_file_of_a_native_program_to_libdir(){
     # The native program file(i.e. not a script) to check for library dependencies
     declare native_program_file="${1}"; shift
