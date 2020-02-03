@@ -15,39 +15,28 @@ set \
 
 # 腳本運行的主要邏輯寫在這裡
 main(){
-    # 便利變數，不使用可移除
-    # script_basecommand：執行腳本的基底命令，例如： ./script.sh
-    # script_dir：腳本所在的目錄路徑
-    # script_filename：腳本檔案名（含副檔名），例如 script.sh
-    # script_name：腳本名稱（不含副檔名），例如 script
-    # script_args：執行腳本的命令列參數的陣列，使用 "${script_args[0]}" 存取
+    # 腳本運行的基底命令
+    declare script_basecommand="${1}"; shift
 
-    # shellcheck disable=SC2034
-    script_basecommand="${1}"; shift 1
-    # shellcheck disable=SC2034
-    script_dir="$(
-       dirname "$(
-           realpath \
-               --strip \
-               "${BASH_SOURCE[0]}"
-       )"
-    )"
-    # shellcheck disable=SC2034
-    script_filename="${BASH_SOURCE##*/}"
-    # shellcheck disable=SC2034
-    script_name="${script_filename%%.*}"
-    # shellcheck disable=SC2034
-    script_args=("${@}")
+    # 腳本運行的命令列
+    declare -a cmdline_args
 
-    # ↓↓↓從這裡開始寫↓↓↓
-    if test "${#script_args[@]}" != 2; then
+    # 如果有命令列引數的話，處理命令列引數
+    # COMPAT: 避免 Bash <= 4.3 於無命令列參數下展開 $@ 會觸發 nounset 檢查的問題
+    if test "${#}" -ne 0; then
+        cmdline_args=("${@}")
+    else
+        cmdline_args=()
+    fi
+
+    if test "${#cmdline_args[@]}" != 2; then
         print_help \
             "${script_basecommand}"
         exit 1
     fi
 
-    native_program_rootdir="${script_args[0]}"; shift_array script_args
-    common_libdir="${script_args[0]}"; shift_array script_args
+    native_program_rootdir="${cmdline_args[0]}"; shift_array cmdline_args
+    common_libdir="${cmdline_args[0]}"; shift_array cmdline_args
 
     if ! test -d "${native_program_rootdir}"; then
         printf -- \
@@ -94,7 +83,9 @@ determine_and_copy_library_file_of_a_native_program_to_libdir(){
     # Check depending libraries, parse the paths out(with some blacklisted
     # libraries stripped out due to incompatibilities), then copy them to the
     # common library directory if it isn't done already
-    ldd "${native_program_file}" \
+    for depending_library_file in $(
+        ldd \
+            "${native_program_file}" \
         | (
             grep \
                 --extended-regexp \
@@ -107,15 +98,28 @@ determine_and_copy_library_file_of_a_native_program_to_libdir(){
                 --invert-match \
                 '/(ld-linux.*|libc|libdl|libgcc_s|libm|libstdc\+\+|linux-vdso|libpthread)\.so.*' \
                 || test "${?}" == 1
-        ) | xargs \
-            --no-run-if-empty \
-            --replace={} \
-            --verbose \
-            -- \
+        )
+    ); do
+        # Skip library files under our packaging root directory (assuming /tmp)
+        if \
+            test "$(
+                cut \
+                    --delimiter=/ \
+                    --fields=2 \
+                    <<< "${depending_library_file%/*}"
+            )" == tmp; then
+            continue
+        fi
+
+        # Copy library file, only if the file isn't copied already
+        declare depending_library_file_filename="${depending_library_file##*/}"
+        if ! test -e "${common_libdir}"/"${depending_library_file_filename}"; then
             cp \
-                --no-clobber \
-                {} \
+                --verbose \
+                "${depending_library_file}" \
                 "${common_libdir}"
+        fi
+    done
 }
 
 ## 檢查腳本運行時期依賴的命令是否存在
@@ -126,10 +130,10 @@ check_runtime_dependencies(){
     for required_command in \
         basename \
         dirname \
+        find \
         grep \
         ldd \
-        realpath \
-        xargs; do
+        realpath; do
         if ! command -v "${required_command}" &>/dev/null; then
             failed=true
 
@@ -144,6 +148,38 @@ check_runtime_dependencies(){
         return 1
     else
         return 0
+    fi
+}
+if ! check_runtime_dependencies; then
+    printf -- \
+        'Error: Runtime dependencies not satisfied, check the installation.\n' \
+        1>&2
+    exit 1
+fi
+
+# 便利變數，不使用可移除
+# script_basecommand：執行腳本的基底命令，例如： ./script.sh
+# script_dir：腳本所在的目錄路徑
+# script_filename：腳本檔案名（含副檔名），例如 script.sh
+# script_name：腳本名稱（不含副檔名），例如 script
+# cmdline_args：包含所有執行腳本的命令列引數(command-line arguments)的索引式陣列
+# (indexed array)為方便使用保留未參照的變數
+# shellcheck disable=SC2034
+{
+    script_basecommand="${0}"
+    script_dir="$(
+        dirname "$(
+            realpath \
+                --strip \
+                "${BASH_SOURCE[0]}"
+        )"
+    )"
+    script_filename="${BASH_SOURCE##*/}"
+    script_name="${script_filename%%.*}"
+    if test "${#}" -ne 0; then
+        cmdline_args=("${@}")
+    else
+        cmdline_args=()
     fi
 }
 
@@ -211,4 +247,4 @@ trap trap_err ERR
 
 check_runtime_dependencies
 
-main "${0}" "${@}"
+main "${script_basecommand}" "${cmdline_args[@]}"
