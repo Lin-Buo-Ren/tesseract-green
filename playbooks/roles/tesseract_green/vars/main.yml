@@ -1,0 +1,3 @@
+---
+# vars file for Tesseract Green
+tesseract_installation_prefix: auto-detected

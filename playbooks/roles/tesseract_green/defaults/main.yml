@@ -1,0 +1,12 @@
+---
+# defaults file for Tesseract Green
+tesseract_version: auto-detected
+tesseract_green_installation_prefix: unset
+leptonica_version: auto-detected
+#leptonica_custom_configure_args:
+  #- CC=gcc-6
+  #- CFLAGS=
+#tesseract_custom_configure_args:
+  #- CC=gcc-6
+  #- CFLAGS=
+cleanup_build_artifacts: False

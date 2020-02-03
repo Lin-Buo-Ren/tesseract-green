@@ -1,0 +1,47 @@
+# Ansible playbook for building the Tesseract Green distribution
+- name: Prepare builder host
+  hosts: builder_host
+  tasks:
+    - name: Prepare builder host
+      vars:
+        dont_install_docker_python_api: yes
+      include_role:
+        name: tesseract_green_builder_host
+
+    - name: Ensure that the builder Docker container is created and started
+      docker_container:
+        name: tesseract-green-builder
+        image: ubuntu:bionic
+        state: started
+        auto_remove: no
+        tty: yes
+        interactive: yes
+        command: sleep infinity
+        mounts:
+          # Use timezone settings from host
+          - read_only: yes
+            source: /etc/localtime
+            target: /etc/localtime
+            type: bind
+
+- name: Prepare builder container and build Tesseract Green
+  hosts: tesseract-green-builder
+  gather_facts: False
+  tasks:
+    - name: Import tesseract_green role
+      import_role:
+        name: tesseract_green
+
+    - name: Fetch built artifacts from builder
+      fetch:
+        src: /tmp/tesseract-green-build.distdir/tesseract-green-{{ tesseract_release_version }}-{{ ansible_architecture }}.tar
+        dest: ./
+        flat: yes
+
+#- name: Clean-up builder
+  #hosts: builder_host
+  #tasks:
+    #- name: Stop builder container
+      #docker_container:
+        #name: tesseract-green-builder
+        #state: stopped

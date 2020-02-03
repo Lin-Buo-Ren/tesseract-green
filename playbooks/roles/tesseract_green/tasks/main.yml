@@ -1,0 +1,391 @@
+---
+- name: Bootstrap Ansible managed node runtime environment on Tesseract Green builder
+  include_role:
+    name: robertdebock.bootstrap
+
+- name: Install TLS certificates for HTTPS request support
+  become: True
+  apt:
+    name: ca-certificates
+
+- name: Create working directories for building Tesseract Green
+  rescue:
+    - name: Terminate the playbook if any tasks in the block fails
+      fail:
+        msg: 'Error: Unable to create working directories for building Tesseract Green'
+  block:
+    - name: 'Create working directories for building Tesseract Green: Determine local cache directory path'
+      set_fact:
+        tesseract_green_cache_dir: /tmp/tesseract-green-build.cachedir
+
+    - name: 'Create working directories for building Tesseract Green: Determine distribution directory path'
+      set_fact:
+        tesseract_green_dist_dir: /tmp/tesseract-green-build.distdir
+
+    - name: 'Create working directories for building Tesseract Green: Determine timestamp of this build session'
+      set_fact:
+        timestamp: "{{ lookup('pipe', 'date +%Y%m%d-%H%M%S') }}"
+
+    - name: 'Create working directories for building Tesseract Green: Determine working directory path'
+      set_fact:
+        tesseract_green_workdir: /tmp/tesseract-green-build-{{ timestamp }}
+
+    - name: 'Create working directories for building Tesseract Green: Determine packaging directory path'
+      set_fact:
+        tesseract_green_pkgdir: '{{ tesseract_green_workdir }}/pkgdir'
+
+    - name: "Create working directories for building Tesseract Green: Determine path for the Leptonica's source tree and build directory"
+      set_fact:
+        leptonica_src_dir: '{{ tesseract_green_workdir }}/leptonica.srcdir'
+        leptonica_build_dir: '{{ tesseract_green_workdir }}/leptonica.builddir'
+
+    - name: "Create working directories for building Tesseract Green: Determine path for the Tesseract's source tree and build directory"
+      set_fact:
+        tesseract_src_dir: '{{ tesseract_green_workdir }}/tesseract.srcdir'
+        tesseract_build_dir: '{{ tesseract_green_workdir }}/tesseract.builddir'
+
+    - name: 'Create working directories for building Tesseract Green: Create working directories'
+      loop:
+        - '{{ tesseract_green_workdir }}'
+        - '{{ tesseract_green_pkgdir }}'
+        - '{{ tesseract_green_cache_dir }}'
+        - '{{ tesseract_green_dist_dir }}'
+        - '{{ leptonica_src_dir }}'
+        - '{{ leptonica_build_dir }}'
+        - '{{ tesseract_src_dir }}'
+        - '{{ tesseract_build_dir }}'
+      loop_control:
+        loop_var: dir
+      file:
+        state: directory
+        path: '{{ dir }}'
+
+    - name: 'Create working directories for building Tesseract Green: Clean-up distribution directory path past build artifacts'
+      shell: rm -f "{{ tesseract_green_dist_dir }}"/*
+
+- name: Acquire required resources from the internet
+  rescue:
+    - name: Terminate the playbook if any tasks in the block fails
+      fail:
+        msg: 'Error: Unable to download required assets from the internet'
+  block:
+    - name: "Acquire required resources from the internet: Install Leptonica's build dependencies"
+      become: True
+      apt:
+        cache_valid_time: 3600
+        pkg:
+          - gcc
+          - libgif-dev
+          - libjpeg8-dev
+          - libopenjp2-7-dev
+          - libpng-dev
+          - libtiff5-dev
+          - libwebp-dev
+          - make
+          - pkg-config
+          - zlib1g
+
+    - name: "Acquire required resources from the internet: Install Tesseract's build dependencies"
+      become: True
+      apt:
+        cache_valid_time: 3600
+        pkg:
+          - automake
+          - g++
+          - libtool
+          - pkg-config
+
+    - name: "Acquire required resources from the internet: Query Tesseract release details"
+      rescue:
+        - fail:
+            msg: "Error: Unable to query Tesseract's release details"
+      block:
+        - name: 'Acquire required resources from the internet: Query Tesseract release details: Query latest Tesseract release details from GitHub Releases API'
+          when: tesseract_version == 'auto-detected'
+          register: result
+          uri:
+            url: https://api.github.com/repos/tesseract-ocr/tesseract/releases/latest
+        - name: 'Acquire required resources from the internet: Query Tesseract release details: Set facts of the Tesseract latest release information'
+          when: tesseract_version == 'auto-detected'
+          set_fact:
+            tesseract_release_version: '{{ result.json.tag_name }}'
+            tesseract_tarball_url: '{{ result.json.tarball_url }}'
+        - name: 'Acquire required resources from the internet: Query Tesseract release details: Query specified Tesseract release details from GitHub Releases API'
+          when: tesseract_version != 'auto-detected'
+          register: result
+          uri:
+            url: https://api.github.com/repos/tesseract-ocr/tesseract/releases/{{ tesseract_version }}
+        - name: 'Acquire required resources from the internet: Query Tesseract release details: Set facts of the Tesseract specified release information'
+          when: tesseract_version != 'auto-detected'
+          set_fact:
+            tesseract_release_version: '{{ result.json.tag_name }}'
+            tesseract_tarball_url: '{{ result.json.tarball_url }}'
+
+    - name: 'Acquire required resources from the internet: Query Leptonica release details'
+      rescue:
+        - fail:
+            msg: "Unable to query Leptonica's release details"
+      block:
+        - name: "Acquire required resources from the internet: Query Leptonica release details: Query latest Leptonica release information from GitHub Releases API"
+          when: leptonica_version == 'auto-detected'
+          register: result
+          uri:
+            url: https://api.github.com/repos/DanBloomberg/leptonica/releases/latest
+
+        - name: "Acquire required resources from the internet: Query Leptonica release details: Determine release version and release tarball URL of latest Leptonica release"
+          when: leptonica_version == 'auto-detected'
+          set_fact:
+            # Leptonica has configure-ready release tarball as an asset.
+            # XXX: Assume the first asset is the source tarball
+            leptonica_tarball_filename: '{{ result.json.assets[0].name }}'
+            leptonica_tarball_url: '{{ result.json.assets[0].browser_download_url }}'
+            leptonica_release_version: '{{ result.json.tag_name }}'
+
+        - name: "Acquire required resources from the internet: Query Leptonica release details: Query specified Leptonica release information from GitHub Releases API"
+          when: leptonica_version != 'auto-detected'
+          register: result
+          uri:
+            url: https://api.github.com/repos/DanBloomberg/leptonica/releases/{{ leptonica_version }}
+
+        - name: "Acquire required resources from the internet: Query Leptonica release details: Determine release version and release tarball URL of specified Leptonica release"
+          when: leptonica_version != 'auto-detected'
+          set_fact:
+            # Leptonica has configure-ready release tarball as an asset.
+            # XXX: Assume the first asset is the source tarball
+            leptonica_tarball_filename: '{{ result.json.assets[0].name }}'
+            leptonica_tarball_url: '{{ result.json.assets[0].browser_download_url }}'
+            leptonica_release_version: '{{ result.json.tag_name }}'
+
+    - name: 'Acquire required resources from the internet: Check if the Leptonica release tarball is cached'
+      register: result
+      find:
+        paths:
+          - '{{ tesseract_green_cache_dir }}'
+        patterns:
+          - '{{ leptonica_tarball_filename }}'
+
+    - name: 'Acquire required resources from the internet: If the Leptonica release tarball is cached, use the cached release tarball'
+      when: result.matched == 1
+      set_fact:
+        leptonica_release_tarball: '{{ result.files[0].path }}'
+
+    - name: 'Acquire required resources from the internet: Download the Leptonica release source tarball'
+      when: leptonica_release_tarball is not defined
+      register: result
+      get_url:
+        url: '{{ leptonica_tarball_url }}'
+        dest: '{{ tesseract_green_cache_dir }}'
+
+    - name: 'Acquire required resources from the internet: Register fact for the downloaded Leptonica release tarball'
+      when: leptonica_release_tarball is not defined
+      set_fact:
+        leptonica_release_tarball: '{{ result.dest }}'
+
+    - name: "Acquire required resources from the internet: Extract Leptonica's release tarball to its source tree directory"
+      unarchive:
+        remote_src: yes
+        src: '{{ leptonica_release_tarball }}'
+        dest: '{{ leptonica_src_dir }}'
+        extra_opts:
+          # We don't want the first level _package_-_version_ directory
+          - --strip-components=1
+
+    - name: 'Acquire required resources from the internet: Check if the Tesseract release tarball is cached'
+      register: result
+      find:
+        paths:
+          - '{{ tesseract_green_cache_dir }}'
+        patterns:
+          # HACK: We don't have preciese tarball filename from GitHub releases API, find it via known patterns
+          - 'tesseract-ocr-tesseract-{{ tesseract_release_version }}-*.tar*'
+
+    - name: 'Acquire required resources from the internet: If the Tesseract release tarball is cached, use the cached release tarball'
+      when: result.matched == 1
+      set_fact:
+        tesseract_release_tarball: '{{ result.files[0].path }}'
+
+    - name: 'Acquire required resources from the internet: Download the Tesseract release source tarball'
+      when: tesseract_release_tarball is not defined
+      register: result
+      get_url:
+        url: '{{ tesseract_tarball_url }}'
+        dest: '{{ tesseract_green_cache_dir }}'
+
+    - name: 'Acquire required resources from the internet: Register fact for the downloaded Tesseract release tarball'
+      when: tesseract_release_tarball is not defined
+      set_fact:
+        tesseract_release_tarball: '{{ result.dest }}'
+
+    - name: "Acquire required resources from the internet: Extract Tessearct's release tarball to its source tree directory"
+      unarchive:
+        remote_src: yes
+        dest: '{{ tesseract_src_dir }}'
+        src: '{{ tesseract_release_tarball }}'
+        extra_opts:
+          # We don't want the first level _package_-_version_ directory
+          - --strip-components=1
+
+- name: 'Prepare Tesseract Green release: Initialize release directories'
+  rescue:
+    - name: Terminate the playbook if any tasks in the block fails
+      fail:
+        msg: 'Error: Unable to prepare Tessearct Green release'
+  block:
+    - name: 'Prepare Tesseract Green release: Initialize release directories: Determine release identifier'
+      set_fact:
+        tesseract_green_release_id: tesseract-green-{{ tesseract_release_version }}-{{ ansible_architecture }}
+
+    - name: 'Prepare Tesseract Green release: Initialize release directories: Determine distribution root directory'
+      set_fact:
+        tesseract_green_pkgrootdir: '{{ tesseract_green_pkgdir }}/{{ tesseract_green_release_id }}'
+
+    - name: 'Prepare Tesseract Green release: Initialize release directories: Create distribution root directory'
+      file:
+        path: '{{ tesseract_green_pkgrootdir }}'
+        state: directory
+
+    - name: 'Prepare Tesseract Green release: Initialize release directories: Register fact for the Tesseract Green runtime dependencies directory'
+      set_fact:
+        tesseract_green_dependencies_dir: '{{ tesseract_green_pkgrootdir }}/dependencies'
+
+    - name: 'Prepare Tesseract Green release: Initialize release directories: Create Tesseract Green runtime dependencies directory'
+      file:
+        path: '{{ tesseract_green_dependencies_dir }}'
+        state: directory
+
+- name: "Build Tesseract's software dependencies: Build Leptonica"
+  rescue:
+    - name: Terminate the playbook if any tasks in the block fails
+      fail:
+        msg: 'Error: Failed to build Leptonica from source'
+  block:
+    - name: "Build Tesseract's software dependencies: Build Leptonica: Configure Leptonica build"
+      args:
+        chdir: '{{ leptonica_build_dir }}'
+      # gnu make - How to specify RPATH in a makefile? - Stack Overflow
+      # https://stackoverflow.com/questions/6638500/how-to-specify-rpath-in-a-makefile
+      command:
+        argv:
+          - '{{ leptonica_src_dir }}/configure'
+          - --prefix={{ tesseract_green_dependencies_dir }}
+          # FIXME: Implement this
+          #{{ leptonica_custom_configure_args }}
+          - LDFLAGS=-Wl,-rpath=${ORIGIN}/../lib
+
+    - name: "Build Tesseract's software dependencies: Build Leptonica: Build Leptonica"
+      args:
+        chdir: '{{ leptonica_build_dir }}'
+      command: make --jobs={{ ansible_processor_vcpus }}
+
+    - name: "Build Tesseract's software dependencies: Build Leptonica: Install Leptonica into Tesseract Green runtime dependencies directory"
+      args:
+        chdir: '{{ leptonica_build_dir }}'
+      command:
+        argv:
+          - make
+          - install
+
+- name: Build Tesseract from source
+  rescue:
+    - name: Terminate the playbook if any tasks in the block fails
+      fail:
+        msg: 'Error: Failed to build Tesseract from source'
+  block:
+    - name: "Build Tesseract from source: Generate configure program of Tesseract"
+      args:
+        chdir: '{{ tesseract_src_dir }}'
+      command:
+        argv:
+          - '{{ tesseract_src_dir }}/autogen.sh'
+
+    - name: "Build Tesseract from source: Configure Tesseract build"
+      args:
+        chdir: '{{ tesseract_build_dir }}'
+      command:
+        argv:
+          - '{{ tesseract_src_dir }}/configure'
+          - --prefix=
+          # FIXME: Properly implement this one
+          #- {{ tesseract_custom_configure_args }}
+          - PKG_CONFIG_PATH={{ tesseract_green_dependencies_dir }}/lib/pkgconfig
+          - LDFLAGS=-Wl,-rpath=${ORIGIN}/../dependencies/lib,-rpath=${ORIGIN}/../lib
+
+    - name: "Build Tesseract from source: Build Tesseract"
+      args:
+        chdir: '{{ tesseract_build_dir }}'
+      command:
+        argv:
+          - make
+          - --jobs={{ ansible_processor_vcpus }}
+
+    - name: 'Build Tesseract from source: Install built Tesseract to the Tesseract Green packaging rootdir'
+      args:
+        chdir: '{{ tesseract_build_dir }}'
+      command:
+        argv:
+          - make
+          - install
+          - DESTDIR={{ tesseract_green_pkgrootdir }}
+
+- name: Prepare Tesseract Green release (stage 2)
+  rescue:
+    - name: Terminate the playbook if any tasks in the block fails
+      fail:
+        msg: 'Error: Unable to prepare Tessearct Green release'
+  block:
+    - name: 'Prepare Tesseract Green release (stage 2): Push common library dependency extract program'
+      copy:
+        src: collect-common-dependencies.bash
+        dest: '{{ tesseract_green_cache_dir }}'
+        mode: '0755'
+
+    - name: 'Prepare Tesseract Green release (stage 2): Collect common libraries into the dependencies directory'
+      command:
+        argv:
+          - '{{ tesseract_green_cache_dir }}/collect-common-dependencies.bash'
+          - '{{ tesseract_green_pkgrootdir }}'
+          - '{{ tesseract_green_dependencies_dir }}/lib'
+
+    - name: 'Prepare Tesseract Green release (stage 2): Strip debug symbols'
+      when: False
+      meta: noop
+
+    - name: 'Prepare Tesseract Green release (stage 2): Remove runtime unnecessary files'
+      when: False
+      meta: noop
+
+    - name: 'Prepare Tesseract Green release (stage 2): Create release archive'
+      become: True
+      archive:
+        format: tar
+        path: '{{ tesseract_green_pkgrootdir }}'
+        dest: '{{ tesseract_green_dist_dir }}/{{ tesseract_green_release_id }}.tar'
+
+- name: Clean-up build artifacts
+  when: cleanup_build_artifacts is sameas True
+  rescue:
+    - name: Terminate the playbook if any tasks in the block fails
+      fail:
+        msg: 'Error: Unable to clean-up build artifacts'
+  block:
+    - name: "Clean-up build artifacts: Clean-up Leptonica's build directory"
+      file:
+        path: '{{ leptonica_build_dir }}'
+        state: absent
+
+    - name: "Clean-up build artifacts: Clean-up Leptonica's source tree directory"
+      when: cleanup_build_artifacts is sameas True
+      file:
+        path: '{{ leptonica_src_dir }}'
+        state: absent
+
+    - name: "Clean-up build artifacts: Clean-up Tessearct's build directory"
+      file:
+        path: '{{ tesseract_build_dir }}'
+        state: absent
+
+    - name: "Clean-up build artifacts: Clean-up Tessearct's source tree directory"
+      when: cleanup_build_artifacts is sameas True
+      file:
+        path: '{{ tesseract_src_dir }}'
+        state: absent
