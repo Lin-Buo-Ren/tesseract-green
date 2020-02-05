@@ -44,6 +44,11 @@
         tesseract_src_dir: '{{ tesseract_green_workdir }}/tesseract.srcdir'
         tesseract_build_dir: '{{ tesseract_green_workdir }}/tesseract.builddir'
 
+    - name: 'Create working directories for building Tesseract Green: Clean-up past build artifacts'
+      file:
+        path: '{{ tesseract_green_dist_dir }}'
+        state: absent
+
     - name: 'Create working directories for building Tesseract Green: Create working directories'
       loop:
         - '{{ tesseract_green_workdir }}'
@@ -59,9 +64,6 @@
       file:
         state: directory
         path: '{{ dir }}'
-
-    - name: 'Create working directories for building Tesseract Green: Clean-up distribution directory path past build artifacts'
-      shell: rm -f "{{ tesseract_green_dist_dir }}"/*
 
 - name: Acquire required resources from the internet
   rescue:
