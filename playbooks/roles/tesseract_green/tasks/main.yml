@@ -269,10 +269,9 @@
       command:
         argv:
           - '{{ leptonica_src_dir }}/configure'
-          - --prefix={{ tesseract_green_dependencies_dir }}
+          #- --prefix={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}
           # FIXME: Implement this
           #{{ leptonica_custom_configure_args }}
-          - LDFLAGS=-Wl,-rpath=${ORIGIN}/../lib
 
     - name: "Build Tesseract's software dependencies: Build Leptonica: Build Leptonica"
       args:
@@ -285,6 +284,7 @@
       command:
         argv:
           - make
+          - DESTDIR={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}
           - install
 
 - name: Build Tesseract from source
@@ -309,8 +309,7 @@
           - --prefix=
           # FIXME: Properly implement this one
           #- {{ tesseract_custom_configure_args }}
-          - PKG_CONFIG_PATH={{ tesseract_green_dependencies_dir }}/lib/pkgconfig
-          - LDFLAGS=-Wl,-rpath=${ORIGIN}/../dependencies/lib,-rpath=${ORIGIN}/../lib
+          - PKG_CONFIG_PATH={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}/pkgconfig
 
     - name: "Build Tesseract from source: Build Tesseract"
       args:
@@ -326,8 +325,8 @@
       command:
         argv:
           - make
-          - install
           - DESTDIR={{ tesseract_green_pkgrootdir }}
+          - install
 
 - name: Prepare Tesseract Green release (stage 2)
   rescue:
