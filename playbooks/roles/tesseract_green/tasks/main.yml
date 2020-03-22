@@ -269,7 +269,7 @@
       command:
         argv:
           - '{{ leptonica_src_dir }}/configure'
-          #- --prefix={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}
+          - --prefix=
           # FIXME: Implement this
           #{{ leptonica_custom_configure_args }}
 
