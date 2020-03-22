@@ -315,7 +315,7 @@
           - --prefix=
           # FIXME: Properly implement this one
           #- {{ tesseract_custom_configure_args }}
-          - PKG_CONFIG_PATH={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}/pkgconfig
+          - PKG_CONFIG_PATH={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}/lib/pkgconfig
 
     - name: "Build Tesseract from source: Build Tesseract"
       args:
