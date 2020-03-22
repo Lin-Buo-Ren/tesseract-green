@@ -35,7 +35,7 @@
     - name: Fetch built artifacts from builder
       fetch:
         src: /tmp/tesseract-green-build.distdir/tesseract-green-{{ tesseract_release_version }}-{{ ansible_architecture }}.tar
-        dest: ./
+        dest: '{{ playbook_dir }}/../'
         flat: yes
 
 #- name: Clean-up builder
