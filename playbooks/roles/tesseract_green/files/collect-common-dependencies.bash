@@ -46,13 +46,9 @@ main(){
         exit 1
     fi
 
-    if ! test -d "${common_libdir}"; then
-        printf -- \
-            'Error: %s does not exist or is not a directory\n' \
-            "${common_libdir}" \
-            1>&2
-        exit 1
-    fi
+    mkdir \
+        --parents \
+        "${common_libdir}"
 
     while IFS= read -r -d $'\0' file_under_test; do
         # ldd(1) returns non-zero if the file isn't a dynamically linked native
