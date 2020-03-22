@@ -347,6 +347,45 @@
           {{ tesseract_green_pkgrootdir | quote}}
           {{ tesseract_green_dependencies_dir | quote }}/common/lib
 
+    - name: 'Prepare Tesseract Green release (stage 2): Detect all executable files for runtime patching'
+      register: executable_files
+      find:
+        paths:
+          - '{{ tesseract_green_pkgrootdir }}/bin'
+        file_type: file
+
+    - name: 'Prepare Tesseract Green release (stage 2): Install executable launcher'
+      copy:
+        src: native-executable-fake-launcher-wrapper.bash
+        dest: '{{ tesseract_green_pkgrootdir }}/bin/native-executable-fake-launcher-wrapper'
+        mode: '0755'
+
+    - name: 'Prepare Tesseract Green release (stage 2): Rename executable files: Copy files'
+      loop: '{{ executable_files.files | map(attribute="path") | list }}'
+      loop_control:
+        loop_var: executable_file
+      copy:
+        src: '{{ executable_file }}'
+        dest: '{{ executable_file }}.real'
+        remote_src: yes
+        mode: '0755'
+
+    - name: 'Prepare Tesseract Green release (stage 2): Rename executable files: Remove source files'
+      loop: '{{ executable_files.files | map(attribute="path") | list }}'
+      loop_control:
+        loop_var: executable_file
+      file:
+        path: '{{ executable_file }}'
+        state: absent
+
+    - name: 'Prepare Tesseract Green release (stage 2): Create symbolic link to real executables'
+      loop: '{{ executable_files.files | map(attribute="path") | list }}'
+      loop_control:
+        loop_var: link_file
+      file:
+        dest: '{{ link_file }}'
+        src: './native-executable-fake-launcher-wrapper'
+        state: link
 
     - name: 'Prepare Tesseract Green release (stage 2): Strip debug symbols'
       when: False
