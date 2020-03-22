@@ -10,3 +10,4 @@ leptonica_version: auto-detected
   #- CC=gcc-6
   #- CFLAGS=
 cleanup_build_artifacts: False
+ubuntu_software_archive_mirror: tw.archive.ubuntu.com

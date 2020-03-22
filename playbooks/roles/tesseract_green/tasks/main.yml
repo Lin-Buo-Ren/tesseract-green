@@ -1,4 +1,8 @@
 ---
+- name: Patch Ubuntu software archive mirror for faster package download
+  when: ubuntu_software_archive_mirror is defined
+  raw: sed --in-place --regexp-extended 's@//([[:alpha:]]+\.)?archive.ubuntu.com/@//{{ ubuntu_software_archive_mirror }}/@' /etc/apt/sources.list
+
 - name: Bootstrap Ansible managed node runtime environment on Tesseract Green builder
   include_role:
     name: robertdebock.bootstrap
