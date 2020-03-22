@@ -413,8 +413,19 @@
       meta: noop
 
     - name: 'Prepare Tesseract Green release (stage 2): Remove runtime unnecessary files'
-      when: False
-      meta: noop
+      failed_when: False
+      shell: >
+        rm -rf
+        {{ tesseract_green_dependencies_dir | quote }}/leptonica-{{ leptonica_release_version | quote }}/lib/cmake
+        {{ tesseract_green_dependencies_dir | quote }}/leptonica-{{ leptonica_release_version | quote }}/lib/pkgconfig
+        {{ tesseract_green_dependencies_dir | quote }}/leptonica-{{ leptonica_release_version  | quote }}/lib/*.a
+        {{ tesseract_green_dependencies_dir | quote }}/leptonica-{{ leptonica_release_version  | quote }}/lib/*.la
+        {{ tesseract_green_dependencies_dir | quote }}/leptonica-{{ leptonica_release_version  | quote }}/include
+        {{ tesseract_green_dependencies_dir | quote }}/leptonica-{{ leptonica_release_version  | quote }}/bin
+        {{ tesseract_green_pkgrootdir | quote }}/include
+        {{ tesseract_green_pkgrootdir | quote }}/lib/pkgconfig
+        {{ tesseract_green_pkgrootdir | quote }}/lib/*.a
+        {{ tesseract_green_pkgrootdir | quote }}/lib/*.la
 
     - name: 'Prepare Tesseract Green release (stage 2): Create release archive'
       become: True
