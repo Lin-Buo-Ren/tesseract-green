@@ -287,6 +287,12 @@
           - DESTDIR={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}
           - install
 
+    - name: "Build Tesseract's software dependencies: Patch Leptonica: Patch liblept library's pkg-config file to make it relocatable"
+      replace:
+        path: '{{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}/lib/pkgconfig/lept.pc'
+        regexp: '^prefix=.*$'
+        replace: 'prefix=${pcfiledir}/../..'
+
 - name: Build Tesseract from source
   rescue:
     - name: Terminate the playbook if any tasks in the block fails
