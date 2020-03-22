@@ -340,18 +340,13 @@
       fail:
         msg: 'Error: Unable to prepare Tessearct Green release'
   block:
-    - name: 'Prepare Tesseract Green release (stage 2): Push common library dependency extract program'
-      copy:
-        src: collect-common-dependencies.bash
-        dest: '{{ tesseract_green_cache_dir }}'
-        mode: '0755'
-
     - name: 'Prepare Tesseract Green release (stage 2): Collect common libraries into the dependencies directory'
-      command:
-        argv:
-          - '{{ tesseract_green_cache_dir }}/collect-common-dependencies.bash'
-          - '{{ tesseract_green_pkgrootdir }}'
-          - '{{ tesseract_green_dependencies_dir }}/lib'
+      script:
+        cmd: >
+          collect-common-dependencies.bash
+          {{ tesseract_green_pkgrootdir | quote}}
+          {{ tesseract_green_dependencies_dir | quote }}/common/lib
+
 
     - name: 'Prepare Tesseract Green release (stage 2): Strip debug symbols'
       when: False
