@@ -310,17 +310,26 @@
         argv:
           - '{{ tesseract_src_dir }}/autogen.sh'
 
+    - name: "Build Tesseract from source: Define configure program's default arguments"
+      set_fact:
+        tesseract_configure_args:
+          - '{{ tesseract_src_dir }}/configure'
+          - --prefix=
+          - --disable-tessdata-prefix
+          - PKG_CONFIG_PATH={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}/lib/pkgconfig
+
+    - name: 'Build Tesseract from source: Append additional configure arugments from user'
+      when:
+        - tesseract_custom_configure_args is defined
+        - tesseract_custom_configure_args is sequence
+      set_fact:
+        tesseract_configure_args: '{{ tesseract_configure_args + tesseract_custom_configure_args }}'
+
     - name: "Build Tesseract from source: Configure Tesseract build"
       args:
         chdir: '{{ tesseract_build_dir }}'
       command:
-        argv:
-          - '{{ tesseract_src_dir }}/configure'
-          - --prefix=
-          # FIXME: Properly implement this one
-          #- {{ tesseract_custom_configure_args }}
-          - --disable-tessdata-prefix
-          - PKG_CONFIG_PATH={{ tesseract_green_dependencies_dir }}/leptonica-{{ leptonica_release_version }}/lib/pkgconfig
+        argv: '{{ tesseract_configure_args }}'
 
     - name: "Build Tesseract from source: Build Tesseract"
       args:
