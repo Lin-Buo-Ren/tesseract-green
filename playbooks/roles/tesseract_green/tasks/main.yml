@@ -265,17 +265,24 @@
       fail:
         msg: 'Error: Failed to build Leptonica from source'
   block:
+    - name: "Build Tesseract's software dependencies: Build Leptonica: Build Tesseract from source: Define configure program's default arguments"
+      set_fact:
+        leptonica_configure_args:
+          - '{{ leptonica_src_dir }}/configure'
+          - --prefix=
+
+    - name: "Build Tesseract's software dependencies: Build Leptonica: Build Tesseract from source: Append additional configure arugments from user"
+      when:
+        - leptonica_custom_configure_args is defined
+        - leptonica_custom_configure_args is sequence
+      set_fact:
+        leptonica_configure_args: '{{ leptonica_configure_args + leptonica_custom_configure_args }}'
+
     - name: "Build Tesseract's software dependencies: Build Leptonica: Configure Leptonica build"
       args:
         chdir: '{{ leptonica_build_dir }}'
-      # gnu make - How to specify RPATH in a makefile? - Stack Overflow
-      # https://stackoverflow.com/questions/6638500/how-to-specify-rpath-in-a-makefile
       command:
-        argv:
-          - '{{ leptonica_src_dir }}/configure'
-          - --prefix=
-          # FIXME: Implement this
-          #{{ leptonica_custom_configure_args }}
+        argv: '{{ leptonica_configure_args }}'
 
     - name: "Build Tesseract's software dependencies: Build Leptonica: Build Leptonica"
       args:
