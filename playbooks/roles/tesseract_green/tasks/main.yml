@@ -101,45 +101,48 @@
           - libtool
           - pkg-config
 
-    - name: "Acquire required resources from the internet: Query Tesseract release details"
+    - name: "Acquire required resources from the internet: Query Tesseract release details (latest)"
+      when: tesseract_version == 'auto-detected'
       rescue:
         - fail:
             msg: "Error: Unable to query Tesseract's release details"
       block:
-        - name: 'Acquire required resources from the internet: Query Tesseract release details: Query latest Tesseract release details from GitHub Releases API'
-          when: tesseract_version == 'auto-detected'
+        - name: 'Acquire required resources from the internet: Query Tesseract release details (latest): Query latest Tesseract release details from GitHub Releases API'
           register: result
           uri:
             url: https://api.github.com/repos/tesseract-ocr/tesseract/releases/latest
-        - name: 'Acquire required resources from the internet: Query Tesseract release details: Set facts of the Tesseract latest release information'
-          when: tesseract_version == 'auto-detected'
-          set_fact:
-            tesseract_release_version: '{{ result.json.tag_name }}'
-            tesseract_tarball_url: '{{ result.json.tarball_url }}'
-        - name: 'Acquire required resources from the internet: Query Tesseract release details: Query specified Tesseract release details from GitHub Releases API'
-          when: tesseract_version != 'auto-detected'
-          register: result
-          uri:
-            url: https://api.github.com/repos/tesseract-ocr/tesseract/releases/{{ tesseract_version }}
-        - name: 'Acquire required resources from the internet: Query Tesseract release details: Set facts of the Tesseract specified release information'
-          when: tesseract_version != 'auto-detected'
+        - name: 'Acquire required resources from the internet: Query Tesseract release details (latest): Set facts of the Tesseract latest release information'
           set_fact:
             tesseract_release_version: '{{ result.json.tag_name }}'
             tesseract_tarball_url: '{{ result.json.tarball_url }}'
 
-    - name: 'Acquire required resources from the internet: Query Leptonica release details'
+    - name: "Acquire required resources from the internet: Query Tesseract release details (user-specified)"
+      when: tesseract_version != 'auto-detected'
+      rescue:
+        - fail:
+            msg: "Error: Unable to query Tesseract's release details"
+      block:
+        - name: 'Acquire required resources from the internet: Query Tesseract release details (user-specified): Query specified Tesseract release details from GitHub Releases API'\
+          register: result
+          uri:
+            url: https://api.github.com/repos/tesseract-ocr/tesseract/releases/{{ tesseract_version }}
+        - name: 'Acquire required resources from the internet: Query Tesseract release details (user-specified): Set facts of the Tesseract specified release information'
+          set_fact:
+            tesseract_release_version: '{{ result.json.tag_name }}'
+            tesseract_tarball_url: '{{ result.json.tarball_url }}'
+
+    - name: 'Acquire required resources from the internet: Query Leptonica release details (latest)'
+      when: leptonica_version == 'auto-detected'
       rescue:
         - fail:
             msg: "Unable to query Leptonica's release details"
       block:
-        - name: "Acquire required resources from the internet: Query Leptonica release details: Query latest Leptonica release information from GitHub Releases API"
-          when: leptonica_version == 'auto-detected'
+        - name: "Acquire required resources from the internet: Query Leptonica release details (latest): Query latest Leptonica release information from GitHub Releases API"
           register: result
           uri:
             url: https://api.github.com/repos/DanBloomberg/leptonica/releases/latest
 
-        - name: "Acquire required resources from the internet: Query Leptonica release details: Determine release version and release tarball URL of latest Leptonica release"
-          when: leptonica_version == 'auto-detected'
+        - name: "Acquire required resources from the internet: Query Leptonica release details (latest): Determine release version and release tarball URL of latest Leptonica release"
           set_fact:
             # Leptonica has configure-ready release tarball as an asset.
             # XXX: Assume the first asset is the source tarball
@@ -147,14 +150,17 @@
             leptonica_tarball_url: '{{ result.json.assets[0].browser_download_url }}'
             leptonica_release_version: '{{ result.json.tag_name }}'
 
-        - name: "Acquire required resources from the internet: Query Leptonica release details: Query specified Leptonica release information from GitHub Releases API"
-          when: leptonica_version != 'auto-detected'
+    - name: 'Acquire required resources from the internet: Query Leptonica release details (user-specified)'
+      when: leptonica_version != 'auto-detected'
+      rescue:
+        - fail:
+            msg: "Unable to query Leptonica's release details"
+        - name: "Acquire required resources from the internet: Query Leptonica release details (user-specified): Query specified Leptonica release information from GitHub Releases API"
           register: result
           uri:
             url: https://api.github.com/repos/DanBloomberg/leptonica/releases/{{ leptonica_version }}
 
-        - name: "Acquire required resources from the internet: Query Leptonica release details: Determine release version and release tarball URL of specified Leptonica release"
-          when: leptonica_version != 'auto-detected'
+        - name: "Acquire required resources from the internet: Query Leptonica release details (user-specified): Determine release version and release tarball URL of specified Leptonica release"
           set_fact:
             # Leptonica has configure-ready release tarball as an asset.
             # XXX: Assume the first asset is the source tarball
