@@ -8,6 +8,12 @@
       include_role:
         name: tesseract_green_builder_host
 
+    - name: Stop builder container to avoid networking issue
+      failed_when: False
+      docker_container:
+        name: tesseract-green-builder
+        state: stopped
+
     - name: Ensure that the builder Docker container is created and started
       docker_container:
         name: tesseract-green-builder
