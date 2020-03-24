@@ -102,7 +102,7 @@
           - pkg-config
 
     - name: "Acquire required resources from the internet: Query Tesseract release details (latest)"
-      when: tesseract_version == 'auto-detected'
+      when: tesseract_version == 'latest'
       rescue:
         - fail:
             msg: "Error: Unable to query Tesseract's release details"
@@ -117,7 +117,7 @@
             tesseract_tarball_url: '{{ result.json.tarball_url }}'
 
     - name: "Acquire required resources from the internet: Query Tesseract release details (user-specified)"
-      when: tesseract_version != 'auto-detected'
+      when: tesseract_version != 'latest'
       rescue:
         - fail:
             msg: "Error: Unable to query Tesseract's release details"
@@ -132,7 +132,7 @@
             tesseract_tarball_url: '{{ result.json.tarball_url }}'
 
     - name: 'Acquire required resources from the internet: Query Leptonica release details (latest)'
-      when: leptonica_version == 'auto-detected'
+      when: leptonica_version == 'latest'
       rescue:
         - fail:
             msg: "Unable to query Leptonica's release details"
@@ -151,7 +151,7 @@
             leptonica_release_version: '{{ result.json.tag_name }}'
 
     - name: 'Acquire required resources from the internet: Query Leptonica release details (user-specified)'
-      when: leptonica_version != 'auto-detected'
+      when: leptonica_version != 'latest'
       rescue:
         - fail:
             msg: "Unable to query Leptonica's release details"
