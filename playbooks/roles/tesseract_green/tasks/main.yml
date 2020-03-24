@@ -375,6 +375,12 @@
           - '{{ tesseract_green_pkgrootdir }}/bin'
         file_type: file
 
+    - name: 'Prepare Tesseract Green release (stage 2): Strip debugging symbols'
+      loop: '{{ executable_files.files | map(attribute="path") | list }}'
+      loop_control:
+        loop_var: executable_file
+      command: 'strip {{ executable_file | quote }}'
+
     - name: 'Prepare Tesseract Green release (stage 2): Install executable launcher'
       copy:
         src: native-executable-fake-launcher-wrapper.bash
@@ -407,10 +413,6 @@
         dest: '{{ link_file }}'
         src: './native-executable-fake-launcher-wrapper'
         state: link
-
-    - name: 'Prepare Tesseract Green release (stage 2): Strip debug symbols'
-      when: False
-      meta: noop
 
     - name: 'Prepare Tesseract Green release (stage 2): Remove runtime unnecessary files'
       failed_when: False
